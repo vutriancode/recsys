@@ -6,7 +6,7 @@ from Attention import Attention
 
 class PostEncode(nn.Module):
 
-    def __init__(self, u2e, r2e, contents_embedding, embed_dim, contents_embed_dim, device="cpu"):
+    def __init__(self, u2e, r2e, contents_embedding, embed_dim, contents_embed_dim, pu_history, pr_history,pr_content, device="cpu"):
         super(PostEncode,self).__init__()
         self.u2e = u2e
         self.r2e = r2e
@@ -17,17 +17,21 @@ class PostEncode(nn.Module):
         self.w_1 = nn.Linear(2*embed_dim, embed_dim)
         self.w_2 = nn.Linear(embed_dim,embed_dim)
         self.attention =Attention(embed_dim)
-        self.o_w = nn.Linear(2 * self.embed_dim, self.embed_dim)  #
+        self.o_w = nn.Linear(2 * self.embed_dim, self.embed_dim)
+        self.pu_history = pu_history 
+        self.pr_history = pr_history
+        self.pr_content = pr_content
 
-    def forward(self, nodes, pu_history, pr_history,pr_content):
 
-        embed_matrix = torch.empty(len(pr_content), self.embed_dim, dtype=torch.float).to(self.device)
+    def forward(self, nodes):
 
-        for i in nodes:
-            j = pu_history[i]
-            k = pr_history[i]
+        embed_matrix = torch.empty(len(nodes), self.embed_dim, dtype=torch.float).to(self.device)
 
-            post_rep = self.contents_embedding(pr_content[i])
+        for index, i in enumerate(nodes):
+            j = self.pu_history[i]
+            k = self.pr_history[i]
+            with torch.no_grad():
+                post_rep = self.contents_embedding(self.pr_content[i])
             post_rep = F.relu(self.w_e(post_rep))
             u_embed, r_embed = self.u2e.weight[j], self.r2e.weight[k]
             #print(post_rep)
@@ -43,5 +47,7 @@ class PostEncode(nn.Module):
             #print(att_history.t().reshape_as(post_rep))
             att_history = torch.cat((att_history.t().reshape_as(post_rep), post_rep))
             att_history = F.relu(self.o_w(att_history))
-            embed_matrix[i] = att_history
-        return embed_matrix
+            embed_matrix[index] = att_history
+        to_feats = embed_matrix
+
+        return to_feats
