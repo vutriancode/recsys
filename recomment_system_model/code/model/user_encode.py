@@ -6,13 +6,14 @@ from Attention import Attention
 
 class UserEncode(nn.Module):
 
-    def __init__(self, u2e, r2e, contents_embedding, embed_dim, contents_embed_dim, device="cpu"):
+    def __init__(self, u2e, r2e, i2e, embed_dim, device="cpu"):
         super(UserEncode,self).__init__()
         self.u2e = u2e
         self.r2e = r2e
+        self.i2e = i2e
         self.device = device 
-        self.contents_embedding = contents_embedding
-        self.w_e = nn.Linear(contents_embed_dim, embed_dim)
+        #self.contents_embedding = contents_embedding
+        #self.w_e = nn.Linear(contents_embed_dim, embed_dim)
         self.embed_dim = embed_dim
         self.w_1 = nn.Linear(2*embed_dim, embed_dim)
         self.w_2 = nn.Linear(embed_dim,embed_dim)
@@ -25,10 +26,8 @@ class UserEncode(nn.Module):
             j = up_history[i]
             k = ur_history[i]
             u_rep = self.u2e.weight[i]
-            p_embed = []
-            for jj in j:
-                p_embed.append(self.contents_embedding(pr_content[jj]))
-            p_embed = F.relu(self.w_2(p_embed))
+            p_embed = self.i2e.weight[j]
+            #p_embed = F.relu(self.w_e(p_embed))
             r_embed = self.r2e.weight[k]
             #r_embed = self.post_embedding()
             number_u = len(j)
